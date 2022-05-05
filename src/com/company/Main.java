@@ -29,31 +29,29 @@ public class Main {
 
     static {
         creteFile();
+        initSchema();
     }
 
-
+    @SneakyThrows
     public static void main(String[] args) {
         ObjectMapper mapper = new ObjectMapper();
 
-        try (Stream<Path> paths = Files.list(Path.of(SOURCE_FOLDER))) {
-            final List<SumduJsonReport> sumduJsonReports = paths.map(file ->
-                    {
-                        try {
-                            String content = Files.lines(file).findFirst().orElseThrow();
-                            return mapper.readValue(content, SumduJsonReport.class);
-                        } catch (IOException e) {
-                            throw new RuntimeException("Failed to read file: " + file.toFile().getName());
-                        }
+        Stream<Path> paths = Files.list(Path.of(SOURCE_FOLDER));
+        final List<SumduJsonReport> sumduJsonReports = paths.map(file ->
+                {
+                    try {
+                        String content = Files.lines(file).findFirst().orElseThrow();
+                        return mapper.readValue(content, SumduJsonReport.class);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to read file: " + file.toFile().getName());
                     }
-            ).collect(Collectors.toList());
+                }
+        ).collect(Collectors.toList());
 
-            // There may be duplicates in the folder
-            var uniqueReports = removeDuplicateReports(sumduJsonReports);
+        // There may be duplicates in the folder
+        var uniqueReports = removeDuplicateReports(sumduJsonReports);
 
-            generateSqlScript(uniqueReports);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read from folder: " + SOURCE_FOLDER);
-        }
+        generateSqlScript(uniqueReports);
     }
 
     private static void generateSqlScript(List<SumduJsonReport> reports) {
@@ -109,5 +107,11 @@ public class Main {
     @SneakyThrows
     private static void creteFile() {
         SQL_FILE.toFile().createNewFile();
+    }
+
+    @SneakyThrows
+    private static void initSchema() {
+        Files.write(SQL_FILE, Collections.singleton(TableConstant.TABLE_REPORTS), StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+        Files.write(SQL_FILE, Collections.singleton(TableConstant.TABLE_NETWORKS), StandardCharsets.UTF_8, StandardOpenOption.APPEND);
     }
 }
